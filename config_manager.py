@@ -15,14 +15,14 @@ from Crypto.Cipher import AES
 from Crypto import Random
 from device_info import device
 from pyccn import AOK_NONE
+import hashlib
 
 BS = 16
 pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
 unpad = lambda s : s[0:-ord(s[-1])]
 
 handler = pyccn.CCN()
-interest_tmpl = pyccn.Interest(scope = 2)
-interest_tmpl1 = pyccn.Interest(scope = 2,answerOriginKind = AOK_NONE) 
+interest_tmpl = pyccn.Interest(scope = 2,answerOriginKind = AOK_NONE) 
 
 
 class RepoSocketPublisher(pyccn.Closure):
@@ -54,23 +54,31 @@ class ConfigManager():
         for info in self.device:
             if(info['name'] == device_name and info['serial'] == serial):
                 iv0 = code[0:16]
-                print iv0
+                #print iv0
                 decipher = AES.new(info['symkey'], AES.MODE_CBC, iv0)
                 text = unpad(decipher.decrypt(code[16:len(code)]))
+                m = hashlib.sha256()
+                m.update(test)
+                digest = m.hexdigest()
+                print 'text'
                 print text
+                print 'test'
                 print test
-                if text == test:
-                    if flag == 'interest':
+                print digest
+                if text == digest:
+                    if flag == 'interest' and self.device[k]['loc_name'] == None:
                         self.device[k]['loc_name'] = test
                         content = {'acl_name':info['acl_name'],'prefix':info['prefix'],'trust_anchor':[{'name':str(self.keyname.appendKeyID(self.key)),'namespace':str(self.keyname),'pubkey':str(self.key.publicToPEM())}]}
                         print content
                         txt = json.dumps(content)
                         iv = Random.new().read(AES.block_size)
+                        m = hashlib.sha256()
+                        m.update(txt)
                         cipher = AES.new(info['symkey'], AES.MODE_CBC, iv)
-                        ciphertxt = cipher.encrypt(pad(txt))
-                        sendtxt = iv+ciphertxt
+                        ciphertxt = cipher.encrypt(pad(m.hexdigest()))
+                        sendtxt = json.dumps({'uncripted':txt,'ciphertxt':binascii.hexlify(iv+ciphertxt)})
                         return sendtxt
-                    elif flag =='data':
+                    elif flag =='data' and self.device[k]['pubkey'] == None:
                         self.device[k]['pubkey'] = test
                         return info['prefix']
                 else:
@@ -98,7 +106,7 @@ class ConfigManager():
         configclosure = ConfigClosure(self)
         handler.setInterestFilter(InterestBaseName, configclosure)
         while True:
-            handler.run(500)
+            handler.run(1000)
             if self.acl_count%60 == 0:
                 self.acl_count = 0;
                 i = 0
@@ -115,12 +123,12 @@ class ConfigManager():
                     self.publisher.put(co)
                     inst_name = pyccn.Name(self.device[i]['loc_name']).append('acl')
                     aclclosure = ConfigClosure(self)
-                    handler.expressInterest(inst_name,aclclosure,interest_tmpl1)
+                    handler.expressInterest(inst_name,aclclosure,interest_tmpl)
                     print 'manager expressInterest'
                     print inst_name
                     i = i+1
             self.acl_count = self.acl_count+1
-            time.sleep(1.0)
+            #time.sleep(1.0)
                 
         
         
@@ -139,6 +147,8 @@ class ConfigClosure(pyccn.Closure):
                 device_name = co.name.components[len(co.name.components)-3]
                 serial = co.name.components[len(co.name.components)-2]
                 test = co.signedInfo.keyLocator.key.publicToDER()
+                print 'publicToDER'
+                print test
                 prefix = self.cm.decoder(device_name,serial,co.content,test,'data')
                 if(prefix != None):
                     keyname = pyccn.Name(prefix).appendVersion().appendKeyID(co.signedInfo.keyLocator.key)

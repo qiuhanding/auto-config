@@ -14,6 +14,7 @@ import binascii
 from Crypto.Cipher import AES
 from Crypto import Random
 from pyccn import AOK_NONE
+import hashlib
 
 interest_tmpl = pyccn.Interest(scope = 2, childSelector = 1, answerOriginKind = AOK_NONE, interestLifetime = 1000.0)
 interest_tmpl0 = pyccn.Interest(scope = 2)
@@ -176,9 +177,11 @@ class InitialClosure(pyccn.Closure):
             InterestBaseName = pyccn.Name(device_prefix).append('pubkey')
             configclosure = ConfigClosure(device_prefix)###################
             handler0.setInterestFilter(InterestBaseName, configclosure)
+            m = hashlib.sha256()
+            m.update(device_prefix)
             iv = Random.new().read(AES.block_size)
             cipher = AES.new(symkey, AES.MODE_CBC, iv)
-            ciphertext = cipher.encrypt(pad(device_prefix))
+            ciphertext = cipher.encrypt(pad(m.hexdigest()))
             instname = pyccn.Name('/local/manager'+device_prefix).append(iv+ciphertext)
             #configclosure1 = ConfigClosure()
             handler0.expressInterest(instname,configclosure,interest_tmpl0)
@@ -193,34 +196,46 @@ class InitialClosure(pyccn.Closure):
 class ConfigClosure(pyccn.Closure):
     def __init__(self,device_prefix):
         self.device_prefix = device_prefix
+        self.logger = None
     def upcall(self, kind, upcallInfo):
         if kind == pyccn.UPCALL_CONTENT or kind == pyccn.UPCALL_CONTENT_UNVERIFIED:
             co = upcallInfo.ContentObject
             #how to decript
             print 'G on data'
-            iv = co.content[0:16]
-            ciphertxt = co.content[16:len(co.content)]
+            co_content = json.loads(co.content)
+            encrypted_content = binascii.unhexlify(co_content['ciphertxt'])
+            iv = encrypted_content[0:16]
+            ciphertxt = encrypted_content[16:len(encrypted_content)]
             decipher = AES.new(symkey, AES.MODE_CBC, iv)
             txt = unpad(decipher.decrypt(ciphertxt))
-            content = json.loads(txt)
-            print 'content'
-            print content
-            aclname = pyccn.Name(str(content['acl_name']))
-            print aclname
-            self.logger = SensorDataLogger(1000,content['trust_anchor'],content['prefix'])
-            aclclosure = AclClosure(self.logger,self.device_prefix)
-            handler0.expressInterest(aclname,aclclosure,interest_tmpl0)
-            InterestBaseName = pyccn.Name(self.device_prefix).append('acl')
-            print InterestBaseName
-            handler0.setInterestFilter(InterestBaseName, aclclosure)#do acl closure needs to be two?
+            m = hashlib.sha256()
+            m.update(co_content['uncripted'])
+            if txt == m.hexdigest() and self.logger == None:
+                content = json.loads(co_content['uncripted'])
+                print 'content'
+                print content
+                aclname = pyccn.Name(str(content['acl_name']))
+                print aclname
+                self.logger = SensorDataLogger(1000,content['trust_anchor'],content['prefix'])
+                aclclosure = AclClosure(self.logger,self.device_prefix)
+                handler0.expressInterest(aclname,aclclosure,interest_tmpl0)
+                InterestBaseName = pyccn.Name(self.device_prefix).append('acl')
+                print InterestBaseName
+                handler0.setInterestFilter(InterestBaseName, aclclosure)
+                
         elif kind == pyccn.UPCALL_INTEREST:
             print 'G on interest'
             interest = upcallInfo.Interest
             print interest.name
             pubkey = ksk.publicToDER()
             iv = Random.new().read(AES.block_size)
+            m = hashlib.sha256()
+            m.update(pubkey)
+            digest = m.hexdigest()
             cipher = AES.new(symkey, AES.MODE_CBC, iv)
-            cipherkey = cipher.encrypt(pad(pubkey))
+            cipherkey = cipher.encrypt(pad(digest))
+            print 'digest'
+            print digest
             sendpubkey = pyccn.Key()
             sendpubkey.fromDER(public = pubkey)
             co = pyccn.ContentObject(name = interest.name, content = iv+cipherkey, signed_info = pyccn.SignedInfo(ksk.publicKeyID, pyccn.KeyLocator(sendpubkey), type = pyccn.CONTENT_KEY, final_block = b'\x00') )####################
@@ -255,6 +270,7 @@ class AclClosure(pyccn.Closure):
                         self.logger.start()
                     else:
                         self.logger.acl = json.loads(co.content)['acl'] 
+                        #I need to trigger the kds to fetch symkey########
                 #self.logger.join()
         elif kind == pyccn.UPCALL_INTEREST:
             interest = upcallInfo.Interest
