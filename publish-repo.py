@@ -73,7 +73,7 @@ class SensorDataLogger(Thread):
         self.ksk = pyccn.Key()
         self.ksk.generateRSA(1024)
         #self.ksk.fromPEM(filename = keyFile)
-        self.ksk_name = self.prefix
+        self.ksk_name = self.prefix.appendKeyID(self.ksk)
         self.ksk_si = pyccn.SignedInfo(self.ksk.publicKeyID, pyccn.KeyLocator(self.ksk_name))
 		
 		

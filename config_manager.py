@@ -40,7 +40,7 @@ class ConfigManager():
     def __init__(self):
         self.key = pyccn.Key()
         self.key.fromPEM(filename = './keychain/keys/bms_root.pem')
-        self.keyname = pyccn.Name('/ndn/ucla.edu/bms')
+        self.keyname = pyccn.Name('/ndn/ucla.edu/bms').appendKeyID(self.key)
         self.publisher = RepoSocketPublisher(12345)
         self.device = device
         self.usrlist = usrlist
@@ -48,6 +48,9 @@ class ConfigManager():
         self.acl_tree = None
         self.FormAclTree()
         self.GenerateAcl()
+        self.dsk = pyccn.Key()
+        self.dsk.fromPEM(filename = './keychain/keys/user_root.pem')
+        self.dskname = pyccn.Name('/ndn/ucla.edu/bms/users').appendKeyID(self.dsk)
         i = 0
         while i<len(self.device):#add version
             self.device[i]['acl_name'] = str(pyccn.Name(self.device[i]['acl_name']).appendVersion())
@@ -141,15 +144,15 @@ class ConfigManager():
                 m = hashlib.sha256()
                 m.update(test)
                 digest = m.hexdigest()
-                print 'text'
-                print text
-                print 'test'
-                print test
-                print digest
+                #print 'text'
+                #print text
+                #print 'test'
+                #print test
+                #print digest
                 if text == digest:
                     if flag == 'interest' and self.device[k]['loc_name'] == None:
                         self.device[k]['loc_name'] = test
-                        content = {'acl_name':info['acl_name'],'prefix':info['prefix'],'trust_anchor':[{'name':str(self.keyname.appendKeyID(self.key)),'namespace':str(self.keyname),'pubkey':str(self.key.publicToPEM())}]}
+                        content = {'acl_name':info['acl_name'],'prefix':info['prefix'],'trust_anchor':[{'name':str(self.keyname),'namespace':str(pyccn.Name(self.keyname.components[0:len(self.keyname.components)-1])),'pubkey':str(self.key.publicToPEM())}]}
                         print content
                         txt = json.dumps(content)
                         iv = Random.new().read(AES.block_size)
@@ -199,34 +202,12 @@ class ConfigManager():
         handler.setInterestFilter(InterestBaseName, configclosure)
         while True:
             handler.run(1000)
-            if self.acl_count == 60:
-                #self.acl_count = 0;
-                user = {'usrname':'/ndn/ucla.edu/bms/users/wentao', 'prefix':['/ndn/ucla.edu/bms/boelter/4809/electrical']}
-                self.usrlist.append(user)
-                self.AddUser(user)
+            #if self.acl_count == 60:
+            #    user = {'usrname':'/ndn/ucla.edu/bms/users/wentao', 'prefix':['/ndn/ucla.edu/bms/boelter/4809/electrical']}
+            #    self.usrlist.append(user)
+            #    self.AddUser(user)
                 
-                #i = 0
-                #while i<len(self.device):
-                    #self.device[i]['acl_name'] =pyccn.Name(self.device[i]['acl_name']).components
-                    #co_name = pyccn.Name(self.device[i]['acl_name'][0:len(self.device[i]['acl_name'])-1]).appendVersion()
-                    #print 'publish acl to repo'
-                    #print str(co_name)
-                    #self.device[i]['acl_name'] = str(co_name)
-                    #self.device[i]['acl'] = self.device[i]['acl'][0:2]##
-                    #content = json.dumps({'acl':self.device[i]['acl']})##
-                    #co = pyccn.ContentObject(name = co_name, content = content, signed_info =   pyccn.SignedInfo(self.key.publicKeyID, pyccn.KeyLocator(self.keyname)))
-                    #co.sign(self.key)
-                    #self.publisher.put(co)
-                    #inst_name = pyccn.Name(self.device[i]['loc_name']).append('acl')
-                    #aclclosure = ConfigClosure(self)
-                    #handler.expressInterest(inst_name,aclclosure,interest_tmpl)
-                    #print 'manager expressInterest'
-                    #print inst_name
-                    #i = i+1
-            self.acl_count = self.acl_count+1
-            #time.sleep(1.0)
-                
-        
+            #self.acl_count = self.acl_count+1                
         
         
         
@@ -252,6 +233,19 @@ class ConfigClosure(pyccn.Closure):
                     content.sign(self.cm.key)
                     self.cm.publisher.put(content)
                     print 'publish G\'s public key to repo'
+            else:
+                content = json.loads(co.content)
+                userkey = pyccn.Key()
+                userkey.fromDER(content['pubkey'])
+                userkey_co = pyccn.ContentObject()
+                userkey_co.name = pyccn.Name(content['name']).appendKeyID(userkey)
+                userkey_co.content = content['pubkey']
+                userkey_co.signedInfo = pyccn.SignedInfo(self.cm.dsk.publicKeyID,    pyccn.KeyLocator(self.cm.dskname), type = pyccn.CONTENT_KEY, final_block = b'\x00')
+                userkey_co.sign(self.cm.dsk)
+                self.cm.publisher.put(userkey_co)
+                newuser = {'usrname':str(userkey_co.name), 'prefix':content['data_prefix']}
+                self.usrlist.append(newuser)
+                self.AddUser(newuser)
             #elif co.name.components[len(co.name.components)-1]=='acl':
                 #verify?
                    
@@ -278,6 +272,10 @@ class ConfigClosure(pyccn.Closure):
                     handler.expressInterest(inst_name,self,interest_tmpl)
                     print 'M express Interest'
                     print inst_name
+            elif interest.name.components[len(interest.name.components)-1]!='userreg':
+                user_prefix = pyccn.Name(interest.name.components[2:len(interest.name.components)-1])
+                handler.expressInterest(user_prefix,self,interest_tmpl)
+                
             else:
                 device_name = interest.name.components[len(interest.name.components)-3]
                 serial = interest.name.components[len(interest.name.components)-2]

@@ -40,7 +40,7 @@ class VerificationClosure(pyccn.Closure):
         self.timestamp = timestamp
         self.publisher = RepoSocketPublisher(12345)
         self.anchors = anchor
-        self.acl = acl
+        #self.acl = acl
         print 'acl'
         print acl
         #[{'name':'/ndn/ucla.edu/bms/%C1.M.K%00%03a%27%95_%7C%1F%CD%C0E%2B54%00%87%AC%84r%DBg%83%07%5D%F9%03%02p%DB%A9%B8%06%B4','namespace': '/ndn/ucla.edu/bms', 'pubkey': \
