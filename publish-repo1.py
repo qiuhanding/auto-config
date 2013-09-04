@@ -54,7 +54,7 @@ class SensorDataLogger(Thread):
         print 'SensorDataLogger.init: ' + str(type(self.prefix))
         self.interval = data_interval # in milliseconds
         self.acl = None
-        self.lock = threading.Lock()
+        #self.lock = threading.Lock()
 		
         self.start_time = int(time.time() * 1000) # time.time() returns float point time in seconds since epoch
 		
@@ -133,7 +133,7 @@ class SensorDataLogger(Thread):
                 time_s = struct.pack("!Q", time_t)
                 
                 key = Random.new().read(32)
-                kds_thread = kds.KDSPublisher(key, time_s, self.kds_dsk, self.kds_si, self.anchor, self.acl, self.kds_dskname, self.lock)
+                kds_thread = kds.KDSPublisher(key, time_s, self.kds_dsk, self.kds_si, self.anchor, self.acl, self.kds_dskname)#, self.lock)
                 kds_thread.start()
                 kds_count = 0
 
@@ -273,10 +273,10 @@ class AclClosure(pyccn.Closure):
                         self.logger.acl = json.loads(co.content)['acl']
                         self.logger.start()
                     else:
-                        self.logger.lock.acquire()
+                        #self.logger.lock.acquire()
                         self.logger.acl = json.loads(co.content)['acl']
-                        self.logger.lock.release()
-                        kds_thread = kds.KDSPublisher(key, time_s, self.logger.kds_dsk, self.logger.kds_si, self.logger.anchor, self.logger.acl, self.logger.kds_dskname,self.logger.lock)
+                        #self.logger.lock.release()
+                        kds_thread = kds.KDSPublisher(key, time_s, self.logger.kds_dsk, self.logger.kds_si, self.logger.anchor, self.logger.acl, self.logger.kds_dskname)#,self.logger.lock)
                         kds_thread.start()
                         #I need to trigger the kds to fetch symkey########
                 #self.logger.join()

@@ -138,7 +138,7 @@ class VerificationClosure(pyccn.Closure):
     
 
 class KDSPublisher(Thread):
-    def  __init__(self, symkey, timestamp, dsk, dsk_si, anchor, acl, prefix, lock):
+    def  __init__(self, symkey, timestamp, dsk, dsk_si, anchor, acl, prefix):#, lock):
         Thread.__init__(self)
         self.symkey = binascii.hexlify(symkey)
         self.timestamp = timestamp
@@ -147,7 +147,7 @@ class KDSPublisher(Thread):
         self.anchor = anchor
         self.acl = acl
         self.prefix = prefix
-        self.lock = lock
+        #self.lock = lock
 
     def run(self):
         global flag_terminate
@@ -157,16 +157,16 @@ class KDSPublisher(Thread):
         print first
 
         handler.expressInterest(first, closure, interest_tmpl)
-        self.lock.acquire()
+        #self.lock.acquire()
         count = 0
         while(flag_terminate == 0):
             handler.run(500)
             count = count+1
             if(count == 60):
             #print flag_terminate
-                self.lock.release()
-        if(count<60):
-            self.lock.release()
+                break
+            #if(count<60):
+            #self.lock.release()
         print 'Publisher stop'
         flag_terminate = 0
             
