@@ -1,7 +1,7 @@
 import pyccn
 from pyccn import _pyccn
 
-import user_list
+#import user_list
 
 from threading import Thread
 import struct
@@ -30,10 +30,10 @@ class RepoSocketPublisher:
         self.sock.send(_pyccn.dump_charbuf(content.ccn_data))
 
 class VerificationClosure(pyccn.Closure):
-    def __init__(self, acl, key, timestamp, dsk, dsk_si, anchor):
+    def __init__(self, acl, key, timestamp, dsk, dsk_si, anchor, prefix):
         self.kds_key = dsk
         self.kds_si = dsk_si
-        self.prefix = pyccn.Name('/ndn/ucla.edu/bms/dummy/kds')
+        self.prefix = pyccn.Name(prefix)
         self.symkey = key
         self.acl = acl
         self.index = 0
@@ -138,7 +138,7 @@ class VerificationClosure(pyccn.Closure):
     
 
 class KDSPublisher(Thread):
-    def  __init__(self, symkey, timestamp, dsk, dsk_si, anchor, acl):
+    def  __init__(self, symkey, timestamp, dsk, dsk_si, anchor, acl, prefix, lock):
         Thread.__init__(self)
         self.symkey = binascii.hexlify(symkey)
         self.timestamp = timestamp
@@ -146,19 +146,27 @@ class KDSPublisher(Thread):
         self.dsk_si = dsk_si
         self.anchor = anchor
         self.acl = acl
+        self.prefix = prefix
+        self.lock = lock
 
     def run(self):
         global flag_terminate
         print 'Publisher started...'
-        closure = VerificationClosure(self.acl, self.symkey, self.timestamp, self.dsk, self.dsk_si,self.anchor)
-        first = pyccn.Name(user_list.usrlist[0]);
+        closure = VerificationClosure(self.acl, self.symkey, self.timestamp, self.dsk, self.dsk_si,self.anchor, self.prefix)
+        first = pyccn.Name(str(self.acl[0]))
+        print first
 
         handler.expressInterest(first, closure, interest_tmpl)
-
+        self.lock.acquire()
+        count = 0
         while(flag_terminate == 0):
             handler.run(500)
+            count = count+1
+            if(count == 60):
             #print flag_terminate
-
+                self.lock.release()
+        if(count<60):
+            self.lock.release()
         print 'Publisher stop'
         flag_terminate = 0
             

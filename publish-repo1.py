@@ -26,15 +26,15 @@ BS = 16
 pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
 unpad = lambda s : s[0:-ord(s[-1])]
 
-keyFile = "./keychain/keys/boelter4805.pem"
-key = binascii.unhexlify('389ad5f8fc26f076e0ba200c9b42f669d07066032df8a33b88d49c1763f80783')
+keyFile = "./keychain/keys/boelter4809.pem"
+key = binascii.unhexlify('14fe923dd3ac6e8945ea02e892db6b3192f2081cbab26b44147d308af58f5609')
 time_s = None
 
 ksk = pyccn.Key()
 ksk.generateRSA(1024)
 
-serial = '001'
-symkey = 'zf\xacn\x14J\x9f\x1a8\t\xeb\xd0\'c\x0e\xca\x97=\xf2\xaf\xc3\x06g\x19\xdb\xba\xad"d\x98Z\xc9'
+serial = '002'
+symkey = '\x8a\x1c\xe7\x8c\xd5\xdae#:\x91H\xfbU\xfc\x83\x19\xb9\xfeQH5\xcf$\x99\x84R\xcf\x11y\n1\xff'
 
 class RepoSocketPublisher(pyccn.Closure):
     def __init__(self, repo_port):
@@ -277,7 +277,7 @@ class AclClosure(pyccn.Closure):
                         self.logger.acl = json.loads(co.content)['acl']
                         self.logger.lock.release()
                         kds_thread = kds.KDSPublisher(key, time_s, self.logger.kds_dsk, self.logger.kds_si, self.logger.anchor, self.logger.acl, self.logger.kds_dskname,self.logger.lock)
-                        kds_thread.start() 
+                        kds_thread.start()
                         #I need to trigger the kds to fetch symkey########
                 #self.logger.join()
         elif kind == pyccn.UPCALL_INTEREST:

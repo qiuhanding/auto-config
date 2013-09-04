@@ -16,6 +16,7 @@ from Crypto import Random
 from device_info import device
 from pyccn import AOK_NONE
 import hashlib
+from user_list import usrlist
 
 BS = 16
 pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
@@ -42,11 +43,91 @@ class ConfigManager():
         self.keyname = pyccn.Name('/ndn/ucla.edu/bms')
         self.publisher = RepoSocketPublisher(12345)
         self.device = device
+        self.usrlist = usrlist
         self.acl_count = 1
+        self.acl_tree = None
+        self.FormAclTree()
+        self.GenerateAcl()
         i = 0
         while i<len(self.device):#add version
             self.device[i]['acl_name'] = str(pyccn.Name(self.device[i]['acl_name']).appendVersion())
             i = i+1
+            
+    def FormAclTree(self):
+        self.acl_tree = dict([('/ndn/ucla.edu/bms',{'acl':[],'child':['/ndn/ucla.edu/bms/melnitz','/ndn/ucla.edu/bms/boelter']}), \
+        ('/ndn/ucla.edu/bms/melnitz',{'acl':[],'child':['/ndn/ucla.edu/bms/melnitz/1405']}), \
+        ('/ndn/ucla.edu/bms/boelter',{'acl':[],'child':['/ndn/ucla.edu/bms/boelter/4805']}), \
+        ('/ndn/ucla.edu/bms/boelter',{'acl':[],'child':['/ndn/ucla.edu/bms/boelter/4809']}), \
+        ('/ndn/ucla.edu/bms/melnitz/1405',{'acl':[],'child':[]}), \
+        ('/ndn/ucla.edu/bms/boelter/4805',{'acl':[],'child':[]}), \
+        ('/ndn/ucla.edu/bms/boelter/4809',{'acl':[],'child':[]})])
+        
+        for usr in usrlist:
+            for prefix in usr['prefix']:
+                name_t = pyccn.Name(prefix)
+                if (len(name_t.components) > 5):
+                    name_t = pyccn.Name(name_t.components[0:5])
+                if ((str(name_t) in self.acl_tree) == True):
+                    self.acl_tree[str(name_t)]['acl'].append(usr['usrname'])
+
+    def AddUser(self,user):
+        for prefix in user['prefix']:
+            name_t = pyccn.Name(prefix)
+            if (len(name_t.components) > 5):
+                name_t = pyccn.Name(name_t.components[0:5])
+            if ((str(name_t) in self.acl_tree) == True):
+                self.acl_tree[str(name_t)]['acl'].append(user['usrname'])
+                len_name = len(name_t.components)
+                self.node = []
+                self.find_device(str(name_t))
+                for device_name in self.node:
+                    index = self.findbyprefix(device_name)
+                    if(index != -1):
+                        self.device[index]['acl'].append(user['usrname'])
+                        self.update_acl(index)
+                
+    def update_acl(self,index):
+        self.device[index]['acl_name'] =pyccn.Name(self.device[index]['acl_name']).components
+        co_name = pyccn.Name(self.device[index]['acl_name'][0:len(self.device[index]['acl_name'])-1]).appendVersion()
+                        
+        print 'publish acl to repo'
+        print str(co_name)
+        self.device[index]['acl_name'] = str(co_name)
+        content = json.dumps({'acl':self.device[index]['acl']})##
+        co = pyccn.ContentObject(name = co_name, content = content, signed_info =   pyccn.SignedInfo(self.key.publicKeyID, pyccn.KeyLocator(self.keyname)))
+        co.sign(self.key)
+        self.publisher.put(co)
+        if(self.device[index]['loc_name']!=None):
+            inst_name = pyccn.Name(self.device[index]['loc_name']).append('acl')
+            aclclosure = ConfigClosure(self)
+            handler.expressInterest(inst_name,aclclosure,interest_tmpl)
+            print 'manager expressInterest'
+            print inst_name
+                            
+    def find_device(self,rootname):
+        child = self.acl_tree[rootname]['child']
+        if (len(child) == 0):
+            self.node.append(rootname)
+        else:
+            for childname in child:
+               find_device(childname)
+            
+
+    def GenerateAcl(self):
+        j = 0
+        for device in self.device:
+            k = 3
+            name_t = pyccn.Name(device['prefix'])
+            while (k<=len(name_t.components)):
+                temp = str(pyccn.Name(name_t.components[0:k]))
+                if((temp in self.acl_tree) == True):
+                    for acl_t in self.acl_tree[temp]['acl']:
+                        self.device[j]['acl'].append(acl_t)
+                k = k+1
+            j = j+1
+                    
+                           
+            
 
              
     def decoder(self,device_name, serial, code, test, flag):#decoding using the symkey
@@ -87,6 +168,15 @@ class ConfigManager():
             k = k+1
             
         return None
+        
+    def findbyprefix(self,prefix):
+        i = 0
+        for info in self.device:
+            if(info['prefix'] == prefix):
+                return i
+            i = i+1
+        return -1
+        
     def find(self,device_name,serial):
         i = 0
         for info in self.device:
@@ -94,10 +184,12 @@ class ConfigManager():
                 return i
             i = i+1
         return -1
+        
     def run(self):
         for info in self.device:
             co_name = pyccn.Name(info['acl_name'])
             print str(co_name)
+            print info['acl']
             content = json.dumps({'acl':info['acl']})
             co = pyccn.ContentObject(name = co_name, content = content, signed_info = pyccn.SignedInfo(self.key.publicKeyID, pyccn.KeyLocator(self.keyname)))
             co.sign(self.key)
@@ -107,26 +199,30 @@ class ConfigManager():
         handler.setInterestFilter(InterestBaseName, configclosure)
         while True:
             handler.run(1000)
-            if self.acl_count%60 == 0:
-                self.acl_count = 0;
-                i = 0
-                while i<len(self.device):
-                    self.device[i]['acl_name'] =pyccn.Name(self.device[i]['acl_name']).components
-                    co_name = pyccn.Name(self.device[i]['acl_name'][0:len(self.device[i]['acl_name'])-1]).appendVersion()
-                    print 'publish acl to repo'
-                    print str(co_name)
-                    self.device[i]['acl_name'] = str(co_name)
-                    self.device[i]['acl'] = self.device[i]['acl'][0:2]##
-                    content = json.dumps({'acl':self.device[i]['acl']})##
-                    co = pyccn.ContentObject(name = co_name, content = content, signed_info =   pyccn.SignedInfo(self.key.publicKeyID, pyccn.KeyLocator(self.keyname)))
-                    co.sign(self.key)
-                    self.publisher.put(co)
-                    inst_name = pyccn.Name(self.device[i]['loc_name']).append('acl')
-                    aclclosure = ConfigClosure(self)
-                    handler.expressInterest(inst_name,aclclosure,interest_tmpl)
-                    print 'manager expressInterest'
-                    print inst_name
-                    i = i+1
+            if self.acl_count == 60:
+                #self.acl_count = 0;
+                user = {'usrname':'/ndn/ucla.edu/bms/users/wentao', 'prefix':['/ndn/ucla.edu/bms/boelter/4809/electrical']}
+                self.usrlist.append(user)
+                self.AddUser(user)
+                
+                #i = 0
+                #while i<len(self.device):
+                    #self.device[i]['acl_name'] =pyccn.Name(self.device[i]['acl_name']).components
+                    #co_name = pyccn.Name(self.device[i]['acl_name'][0:len(self.device[i]['acl_name'])-1]).appendVersion()
+                    #print 'publish acl to repo'
+                    #print str(co_name)
+                    #self.device[i]['acl_name'] = str(co_name)
+                    #self.device[i]['acl'] = self.device[i]['acl'][0:2]##
+                    #content = json.dumps({'acl':self.device[i]['acl']})##
+                    #co = pyccn.ContentObject(name = co_name, content = content, signed_info =   pyccn.SignedInfo(self.key.publicKeyID, pyccn.KeyLocator(self.keyname)))
+                    #co.sign(self.key)
+                    #self.publisher.put(co)
+                    #inst_name = pyccn.Name(self.device[i]['loc_name']).append('acl')
+                    #aclclosure = ConfigClosure(self)
+                    #handler.expressInterest(inst_name,aclclosure,interest_tmpl)
+                    #print 'manager expressInterest'
+                    #print inst_name
+                    #i = i+1
             self.acl_count = self.acl_count+1
             #time.sleep(1.0)
                 
