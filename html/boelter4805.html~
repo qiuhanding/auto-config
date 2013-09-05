@@ -1,0 +1,69 @@
+<!DOCTYPE HTML>
+<html>  
+  <head>
+    <meta charset="utf-8">
+    <title>NDN Building Monitoring System</title>
+
+    <!-- Load styles -->
+    <link href="http://fonts.googleapis.com/css?family=Rambla:400,700|Istok+Web:400,700" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" type="text/css" href="css/style.css" />
+    <link rel="stylesheet" type="text/css" href="css/envision.min.css" />
+  </head>
+
+  <body>
+    <div id="all">
+      <header>
+	<div id="title">
+	  <h1>UCLA NDN <grey>Building Monitoring</grey> <blue>Testbed</blue></h1>
+	</div>
+	<div id="navbar_blue">
+	  <ul>
+	    <li><a href="strathmore.html">Snapshot - Strathmore</a></li>
+	    <li><a href="melnitz.html" class="active">Snapshot - Melnitz</a></li>
+	    <li><a href="melnitz-all.html">All data - Melnitz</a></li>
+	    <li><a href="about.html">About</a></li>
+	  </ul>
+	</div>
+      </header>
+      
+      <div id="loader">
+	<img src="img/loader-blue.gif" />
+      </div>
+
+
+      <div id="error">
+	<p>Sorry, this is embarrassing. I cannot fetch data from remote repo :( </p>
+      </div>
+      
+
+      <div id="summary">
+	<div class="titles"><p id="bacname">MLNTZ.PNL.J.DEMAND (in kW): </p></div>
+	<div id="pw">
+	</div>
+	<hr style="color: #66FFFF;" />
+	<div id="pw_time">
+	</div>
+      </div>
+
+    </div>
+    
+    <footer>
+      <grey>Powered by </grey><a target="_blank" href="http://github.com/named-data/ndn-js"><blue>NDN.JS</blue></a><grey>.</grey>
+    </footer>
+
+    <!-- Load scripts at the bottom for efficiency -->
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script src="js/ndn.min.js"></script>
+    <script src="js/envision.min.js"></script>
+    <script src="js/IdentityPolicy.js"></script>
+    <script src="js/crypto/enc-base64.js"></script>
+    <script src="js/crypto/md5.js"></script>
+    <script src="js/crypto/evpkdf.js"></script>
+    <script src="js/crypto/cipher-core.js"></script>
+    <script src="js/crypto/aes.js"></script>
+    <script src="js/wshub.js"></script>
+    <script src="js/melnitz-data-points.js"></script>
+    <script src="js/melnitz-policy.js"></script>
+    <script src="js/melnitz.js"></script>
+  </body>
+</html>

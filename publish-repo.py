@@ -111,6 +111,15 @@ class SensorDataLogger(Thread):
         kds_dsk_count = 1
         point_count = 0
         time_s = struct.pack("!Q", 0)
+        
+        point_con = pyccn.ContentObject()
+        point_con.name = self.prefix.append('data_points')
+        point_con.content = json.dumps({'datapoints':[str(self.data_prefix)]})##################
+        point_con.signedInfo = self.data_si
+        point_con.sign(self.data_dsk)
+        self.publisher.put(point_con)
+        print 'publish data points'
+        print point_con.name
 		
         while (True):
             # now = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
@@ -133,7 +142,8 @@ class SensorDataLogger(Thread):
                 time_s = struct.pack("!Q", time_t)
                 
                 key = Random.new().read(32)
-                kds_thread = kds.KDSPublisher(key, time_s, self.kds_dsk, self.kds_si, self.anchor, self.acl, self.kds_dskname)#, self.lock)
+                kds_prefix = str(self.prefix.append('kds'))
+                kds_thread = kds.KDSPublisher(key, time_s, self.kds_dsk, self.kds_si, self.anchor, self.acl, kds_prefix)#, self.lock)
                 kds_thread.start()
                 kds_count = 0
 
@@ -276,7 +286,8 @@ class AclClosure(pyccn.Closure):
                         #self.logger.lock.acquire()
                         self.logger.acl = json.loads(co.content)['acl']
                         #self.logger.lock.release()
-                        kds_thread = kds.KDSPublisher(key, time_s, self.logger.kds_dsk, self.logger.kds_si, self.logger.anchor, self.logger.acl, self.logger.kds_dskname)#,self.logger.lock)
+                        kds_prefix = str(self.logger.prefix.append('kds'))
+                        kds_thread = kds.KDSPublisher(key, time_s, self.logger.kds_dsk, self.logger.kds_si, self.logger.anchor, self.logger.acl, kds_prefix)#,self.logger.lock)
                         kds_thread.start() 
                         #I need to trigger the kds to fetch symkey########
                 #self.logger.join()

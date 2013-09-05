@@ -1,0 +1,78 @@
+<!DOCTYPE HTML>
+<html>  
+  <head>
+    <meta charset="utf-8">
+    <title>NDN Sensor Data</title>
+
+    <!-- Load styles -->
+    <link href="http://fonts.googleapis.com/css?family=Rambla:400,700|Istok+Web:400,700" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" type="text/css" href="css/style.css" />
+  </head>
+
+  <body>
+    <div id="all">
+      <header>
+	<div id="title">
+	  <h1>UCLA NDN <grey>Building Monitoring</grey> <blue>Testbed</blue></h1>
+	</div>
+	<div id="navbar_blue">
+	  <ul>
+	    <li><a href="strathmore.html">Snapshot - Strathmore</a></li>
+	    <li><a href="melnitz.html">Snapshot - Melnitz</a></li>
+	    <li><a href="melnitz-all.html">All data - Melnitz</a></li>
+	    <li><a href="about.html" class="active">About</a></li>
+	  </ul>
+	</div>
+      </header>
+      
+      <div style="margin-top:150px;">
+	<div class="titles"><p>Strathmore Building</p></div>
+	<div>
+	  <img src="img/strathmore.png" style="width:500px;"/>
+	</div>
+	
+	<div class="titles"><p>Smart Grid Technologies</p></div>
+	<div>
+	  <p>Chilled Water Flow Meter</p>
+	  <table>
+	    <tr>
+	      <td style="vertical-align:top;">
+		<img src="img/water-meter-01.png" style="width:120px;"/>
+	      </td>
+	      <td style="vertical-align:top;">
+		<img src="img/water-meter-02.png" style="width:120px;"/>
+	      </td>
+	    </tr>
+	  </table>
+	</div>
+	<div>
+	  <p>Electrical Demand Meter</p>
+	  <table>
+	    <tr>
+	      <td style="vertical-align:top;">
+		<img src="img/electri-meter-01.png" style="width:120px;"/>
+	      </td>
+	      <td style="vertical-align:top;">
+		<img src="img/electri-meter-02.png" style="width:120px;"/>
+	      </td>
+	    </tr>
+	  </table>
+	</div>
+      </div>
+    </div>
+    
+    <footer>
+      <grey>Powered by </grey><a target="_blank" href="http://github.com/named-data/ndn-js"><blue>NDN.JS</blue></a><grey>.</grey>
+    </footer>
+
+    <!-- Load scripts at the bottom for efficiency -->
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script type="text/javascript" src="js/ndn.min.js"></script>
+
+    <script type="text/javascript">
+      $(document).ready(function() { $("#all").fadeIn(1000); });
+    </script>
+  </body>
+
+</html>
+

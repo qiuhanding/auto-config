@@ -59,8 +59,7 @@ class ConfigManager():
     def FormAclTree(self):
         self.acl_tree = dict([('/ndn/ucla.edu/bms',{'acl':[],'child':['/ndn/ucla.edu/bms/melnitz','/ndn/ucla.edu/bms/boelter']}), \
         ('/ndn/ucla.edu/bms/melnitz',{'acl':[],'child':['/ndn/ucla.edu/bms/melnitz/1405']}), \
-        ('/ndn/ucla.edu/bms/boelter',{'acl':[],'child':['/ndn/ucla.edu/bms/boelter/4805']}), \
-        ('/ndn/ucla.edu/bms/boelter',{'acl':[],'child':['/ndn/ucla.edu/bms/boelter/4809']}), \
+        ('/ndn/ucla.edu/bms/boelter',{'acl':[],'child':['/ndn/ucla.edu/bms/boelter/4805','/ndn/ucla.edu/bms/boelter/4809']}), \
         ('/ndn/ucla.edu/bms/melnitz/1405',{'acl':[],'child':[]}), \
         ('/ndn/ucla.edu/bms/boelter/4805',{'acl':[],'child':[]}), \
         ('/ndn/ucla.edu/bms/boelter/4809',{'acl':[],'child':[]})])
@@ -81,7 +80,7 @@ class ConfigManager():
             name_str = str(name_t)
             if ((name_str in self.acl_tree) == True):
                 self.acl_tree[name_str]['acl'].append(user['usrname'])
-                len_name = len(name_t.components)
+                #len_name = len(name_t.components)
                 self.node = []
                 self.find_device(name_str)
                 for device_name in self.node:
@@ -114,7 +113,7 @@ class ConfigManager():
             self.node.append(rootname)
         else:
             for childname in child:
-               find_device(childname)
+               self.find_device(childname)
             
 
     def GenerateAcl(self):
@@ -201,6 +200,35 @@ class ConfigManager():
         InterestBaseName = pyccn.Name('/local/manager')
         configclosure = ConfigClosure(self)
         handler.setInterestFilter(InterestBaseName, configclosure)
+        for usr in self.usrlist:
+            name_t = pyccn.Name(str(usr['usrname'])).components
+            username = pyccn.Name(name_t[0:len(name_t)-1]).append('acl').appendVersion()
+            device_prefix = []
+            
+            for prefix in usr['prefix']:
+                name_t = pyccn.Name(str(prefix))
+                if (len(name_t.components) > 5):
+                    name_t = pyccn.Name(name_t.components[0:5])
+                name_str = str(name_t)
+                if ((name_str in self.acl_tree) == True):
+                    self.node = []
+                    self.find_device(name_str)
+                    #print self.node
+                    for device_name in self.node:
+                        #print device_name
+                        index = self.findbyprefix(device_name)
+                        flag = (device_name+'/data_points') in device_prefix
+                        #print (index != -1 and flag == False)
+                        if (index != -1 and flag == False):
+                            device_prefix.append(device_name+'/data_points')            
+            
+            print device_prefix
+            data_prefix = pyccn.ContentObject(name = username, content = json.dumps({'prefix':device_prefix}), signed_info = pyccn.SignedInfo(self.key.publicKeyID, pyccn.KeyLocator(self.keyname)))
+            data_prefix.sign(self.dsk)
+            self.publisher.put(data_prefix)
+            print 'Publish Data Points'
+            print username              
+        
         while True:
             handler.run(1000)
             #if self.acl_count == 60:
@@ -208,7 +236,7 @@ class ConfigManager():
             #    self.usrlist.append(user)
             #    self.AddUser(user)
                 
-            #self.acl_count = self.acl_count+1                
+            #self.acl_count = self.acl_count+1
         
         
         
@@ -247,6 +275,27 @@ class ConfigClosure(pyccn.Closure):
                 newuser = {'usrname':str(userkey_co.name), 'prefix':content['data_prefix']}
                 self.cm.usrlist.append(newuser)
                 self.cm.AddUser(newuser)
+                
+                device_prefix = []
+                name_t = pyccn.Name(str(content['name'])).components
+                username = pyccn.Name(name_t[0:len(name_t)-1]).append('acl').appendVersion()
+                for prefix in content['data_prefix']:
+                    name_t = pyccn.Name(str(prefix))
+                    if (len(name_t.components) > 5):
+                        name_t = pyccn.Name(name_t.components[0:5])
+                    name_str = str(name_t)
+                    if ((name_str in self.cm.acl_tree) == True):
+                        self.cm.node = []
+                        self.cm.find_device(name_str)
+                        
+                        for device_name in self.cm.node:
+                            index = self.cm.findbyprefix(device_name)
+                            print (device_name+'/data_points') in device_prefix
+                            if(index != -1 and ((device_name+'/data_points') in device_prefix == False)):
+                                device_prefix.append(device_name+'/data_points')
+                data_prefix = pyccn.ContentObject(name = username, content = json.dumps({'prefix':device_prefix}), signed_info = pyccn.SignedInfo(self.cm.key.publicKeyID, pyccn.KeyLocator(self.cm.keyname)))
+                data_prefix.sign(self.cm.dsk)
+                self.cm.publisher.put(data_prefix)
             #elif co.name.components[len(co.name.components)-1]=='acl':
                 #verify?
                    
