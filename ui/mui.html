@@ -1,0 +1,20 @@
+<!DOCTYPE HTML>
+<head>
+  <meta charset="utf-8">
+  <title>NDN-BMS User Management Interface</title>
+  
+  <script src="./ndn.min.js"></script>
+  <script src="./jquery-1.10.2.min.js"></script>
+  <script src="./mui.js"></script>
+</head>
+
+<body>
+  <h1>NDN-BMS User Management Interface</h1>
+  <div id="forms" style="font-family: Monaco">
+    User Name:<br><input id='uname' type='text' size='100' value='/ndn/ucla.edu/bms/users/aaa' ><br/>
+    Public Key PEM:<br><textarea id='pubkey' rows='10' cols='100'></textarea><br/>
+    Data Prefix:<br><textarea id='data_prefix' rows='10' cols='100'></textarea><br/>
+    <input type='button' value='Submit' onclick='submit()'>
+  </div>
+</body>
+</html>

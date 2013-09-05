@@ -236,10 +236,10 @@ class ConfigClosure(pyccn.Closure):
             else:
                 content = json.loads(co.content)
                 userkey = pyccn.Key()
-                userkey.fromDER(content['pubkey'])
+                userkey.fromDER(public=binascii.unhexlify(content['pubkey']))
                 userkey_co = pyccn.ContentObject()
-                userkey_co.name = pyccn.Name(content['name']).appendKeyID(userkey)
-                userkey_co.content = content['pubkey']
+                userkey_co.name = pyccn.Name(str(content['name'])).appendKeyID(userkey)
+                userkey_co.content = binascii.unhexlify(content['pubkey'])
                 userkey_co.signedInfo = pyccn.SignedInfo(self.cm.dsk.publicKeyID,    pyccn.KeyLocator(self.cm.dskname), type = pyccn.CONTENT_KEY, final_block = b'\x00')
                 userkey_co.sign(self.cm.dsk)
                 self.cm.publisher.put(userkey_co)
@@ -253,7 +253,11 @@ class ConfigClosure(pyccn.Closure):
             interest = upcallInfo.Interest
             print 'manager on interest'
             print interest.name
-            if interest.name.components[len(interest.name.components)-1]!='acl':
+            if interest.name.components[len(interest.name.components)-1]=='userreg':
+                user_prefix = pyccn.Name(interest.name.components[2:len(interest.name.components)-1])
+                print user_prefix
+                handler.expressInterest(user_prefix,self,interest_tmpl)
+            elif interest.name.components[len(interest.name.components)-1]!='acl':
                 device_name = interest.name.components[len(interest.name.components)-3]
                 serial = interest.name.components[len(interest.name.components)-2]
                 info = interest.name.components[len(interest.name.components)-1]
@@ -272,9 +276,7 @@ class ConfigClosure(pyccn.Closure):
                     handler.expressInterest(inst_name,self,interest_tmpl)
                     print 'M express Interest'
                     print inst_name
-            elif interest.name.components[len(interest.name.components)-1]!='userreg':
-                user_prefix = pyccn.Name(interest.name.components[2:len(interest.name.components)-1])
-                handler.expressInterest(user_prefix,self,interest_tmpl)
+            
                 
             else:
                 device_name = interest.name.components[len(interest.name.components)-3]
@@ -290,6 +292,7 @@ class ConfigClosure(pyccn.Closure):
                 
                 
         elif kind == pyccn.UPCALL_INTEREST_TIMED_OUT:
+            print 'Reexpress interest'
             return pyccn.RESULT_REEXPRESS
 
         return pyccn.RESULT_OK
