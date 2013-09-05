@@ -1,5 +1,21 @@
 var ndn = new NDN();
 
+// For test purpose
+function defaultVal() {
+    $('#uname').val('/ndn/ucla.edu/bms/users/test');
+
+    var pem = '-----BEGIN PUBLIC KEY-----\n' + 
+	'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC041RcFNZxXweFGdQpMp6BAS+p\n' + 
+	'f2VSs3tNFIvhceMcBRVwUDecD0YFiEJtb5a/yKd/A3860NYRxGnKTJb68/M+3vkH\n' + 
+	'hxeiMN9XPo357wQrAXMq0xWpo1C+A4htYwDsXR0Qt61/O2r8toVXVWeClm/25hnj\n' + 
+	'kezKiJWA/aRXMr6dSwIDAQAB\n' + 
+	'-----END PUBLIC KEY-----';
+    
+    $('#pubkey').val(pem);
+    
+    $('#data_prefix').val('/ndn/ucla.edu/bms/boelter/4809');
+}
+
 var mui_prefix = '/local/bms/mui'
 //var connected = false;
 

@@ -75,14 +75,15 @@ class ConfigManager():
 
     def AddUser(self,user):
         for prefix in user['prefix']:
-            name_t = pyccn.Name(prefix)
+            name_t = pyccn.Name(str(prefix))
             if (len(name_t.components) > 5):
                 name_t = pyccn.Name(name_t.components[0:5])
-            if ((str(name_t) in self.acl_tree) == True):
-                self.acl_tree[str(name_t)]['acl'].append(user['usrname'])
+            name_str = str(name_t)
+            if ((name_str in self.acl_tree) == True):
+                self.acl_tree[name_str]['acl'].append(user['usrname'])
                 len_name = len(name_t.components)
                 self.node = []
-                self.find_device(str(name_t))
+                self.find_device(name_str)
                 for device_name in self.node:
                     index = self.findbyprefix(device_name)
                     if(index != -1):
@@ -233,7 +234,7 @@ class ConfigClosure(pyccn.Closure):
                     content.sign(self.cm.key)
                     self.cm.publisher.put(content)
                     print 'publish G\'s public key to repo'
-            else:
+            elif co.name.components[len(co.name.components)-1] != 'acl':
                 content = json.loads(co.content)
                 userkey = pyccn.Key()
                 userkey.fromDER(public=binascii.unhexlify(content['pubkey']))
@@ -244,8 +245,8 @@ class ConfigClosure(pyccn.Closure):
                 userkey_co.sign(self.cm.dsk)
                 self.cm.publisher.put(userkey_co)
                 newuser = {'usrname':str(userkey_co.name), 'prefix':content['data_prefix']}
-                self.usrlist.append(newuser)
-                self.AddUser(newuser)
+                self.cm.usrlist.append(newuser)
+                self.cm.AddUser(newuser)
             #elif co.name.components[len(co.name.components)-1]=='acl':
                 #verify?
                    
