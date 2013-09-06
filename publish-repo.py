@@ -192,11 +192,12 @@ class InitialClosure(pyccn.Closure):
             configclosure = ConfigClosure(device_prefix)###################
             handler0.setInterestFilter(InterestBaseName, configclosure)
             m = hashlib.sha256()
+            m.update(symkey)
             m.update(device_prefix)
-            iv = Random.new().read(AES.block_size)
-            cipher = AES.new(symkey, AES.MODE_CBC, iv)
-            ciphertext = cipher.encrypt(pad(m.hexdigest()))
-            instname = pyccn.Name('/local/manager'+device_prefix).append(iv+ciphertext)
+            #iv = Random.new().read(AES.block_size)
+            #cipher = AES.new(symkey, AES.MODE_CBC, iv)
+            #ciphertext = cipher.encrypt(pad(m.hexdigest()))
+            instname = pyccn.Name('/local/manager'+device_prefix).append(m.hexdigest())
             #configclosure1 = ConfigClosure()
             handler0.expressInterest(instname,configclosure,interest_tmpl0)
                 
@@ -217,12 +218,13 @@ class ConfigClosure(pyccn.Closure):
             #how to decript
             print 'G on data'
             co_content = json.loads(co.content)
-            encrypted_content = binascii.unhexlify(co_content['ciphertxt'])
-            iv = encrypted_content[0:16]
-            ciphertxt = encrypted_content[16:len(encrypted_content)]
-            decipher = AES.new(symkey, AES.MODE_CBC, iv)
-            txt = unpad(decipher.decrypt(ciphertxt))
+            txt = co_content['ciphertxt']
+            #iv = encrypted_content[0:16]
+            #ciphertxt = encrypted_content[16:len(encrypted_content)]
+            #decipher = AES.new(symkey, AES.MODE_CBC, iv)
+            #txt = unpad(decipher.decrypt(ciphertxt))
             m = hashlib.sha256()
+            m.update(symkey)
             m.update(co_content['uncripted'])
             if txt == m.hexdigest() and self.logger == None:
                 content = json.loads(co_content['uncripted'])
@@ -242,17 +244,18 @@ class ConfigClosure(pyccn.Closure):
             interest = upcallInfo.Interest
             print interest.name
             pubkey = ksk.publicToDER()
-            iv = Random.new().read(AES.block_size)
+            #iv = Random.new().read(AES.block_size)
             m = hashlib.sha256()
+            m.update(symkey)
             m.update(pubkey)
             digest = m.hexdigest()
-            cipher = AES.new(symkey, AES.MODE_CBC, iv)
-            cipherkey = cipher.encrypt(pad(digest))
+            #cipher = AES.new(symkey, AES.MODE_CBC, iv)
+            #cipherkey = cipher.encrypt(pad(digest))
             print 'digest'
             print digest
             sendpubkey = pyccn.Key()
             sendpubkey.fromDER(public = pubkey)
-            co = pyccn.ContentObject(name = interest.name, content = iv+cipherkey, signed_info = pyccn.SignedInfo(ksk.publicKeyID, pyccn.KeyLocator(sendpubkey), type = pyccn.CONTENT_KEY, final_block = b'\x00') )####################
+            co = pyccn.ContentObject(name = interest.name, content = digest, signed_info = pyccn.SignedInfo(ksk.publicKeyID, pyccn.KeyLocator(sendpubkey), type = pyccn.CONTENT_KEY, final_block = b'\x00') )####################
             co.sign(ksk)  
             handler0.put(co)
         elif kind == pyccn.UPCALL_INTEREST_TIMED_OUT:

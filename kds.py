@@ -81,7 +81,8 @@ class VerificationClosure(pyccn.Closure):
         global flag_terminate
         if kind == pyccn.UPCALL_CONTENT or kind == pyccn.UPCALL_CONTENT_UNVERIFIED:
             co = upcallInfo.ContentObject
-            
+            print "kds on data"
+            print co.name
             keylocator =str(co.signedInfo.keyLocator.keyName)
             anchor_pubkey = self.authorize_by_anchor(str(co.name),keylocator)
             if anchor_pubkey !=None:
@@ -97,6 +98,7 @@ class VerificationClosure(pyccn.Closure):
                 
                 if len(self.stack) == 0:
                     usrpubkey = co.content
+                    print usrpubkey
                     #publish
                     usrkey = pyccn.Key()
                     usrkey.fromDER(public = usrpubkey)

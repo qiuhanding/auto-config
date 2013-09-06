@@ -137,11 +137,12 @@ class ConfigManager():
         k = 0
         for info in self.device:
             if(info['name'] == device_name and info['serial'] == serial):
-                iv0 = code[0:16]
+                #iv0 = code[0:16]
                 #print iv0
-                decipher = AES.new(info['symkey'], AES.MODE_CBC, iv0)
-                text = unpad(decipher.decrypt(code[16:len(code)]))
+                #decipher = AES.new(info['symkey'], AES.MODE_CBC, iv0)
+                #text = unpad(decipher.decrypt(code[16:len(code)]))
                 m = hashlib.sha256()
+                m.update(info['symkey'])
                 m.update(test)
                 digest = m.hexdigest()
                 #print 'text'
@@ -149,18 +150,19 @@ class ConfigManager():
                 #print 'test'
                 #print test
                 #print digest
-                if text == digest:
+                if code == digest:
                     if flag == 'interest' and self.device[k]['loc_name'] == None:
                         self.device[k]['loc_name'] = test
                         content = {'acl_name':info['acl_name'],'prefix':info['prefix'],'trust_anchor':[{'name':str(self.keyname),'namespace':str(pyccn.Name(self.keyname.components[0:len(self.keyname.components)-1])),'pubkey':str(self.key.publicToPEM())}]}
                         print content
                         txt = json.dumps(content)
-                        iv = Random.new().read(AES.block_size)
+                        #iv = Random.new().read(AES.block_size)
                         m = hashlib.sha256()
+                        m.update(info['symkey'])
                         m.update(txt)
-                        cipher = AES.new(info['symkey'], AES.MODE_CBC, iv)
-                        ciphertxt = cipher.encrypt(pad(m.hexdigest()))
-                        sendtxt = json.dumps({'uncripted':txt,'ciphertxt':binascii.hexlify(iv+ciphertxt)})
+                        #cipher = AES.new(info['symkey'], AES.MODE_CBC, iv)
+                        #ciphertxt = cipher.encrypt(pad(m.hexdigest()))
+                        sendtxt = json.dumps({'uncripted':txt,'ciphertxt':m.hexdigest()})
                         return sendtxt
                     elif flag =='data' and self.device[k]['pubkey'] == None:
                         self.device[k]['pubkey'] = test
