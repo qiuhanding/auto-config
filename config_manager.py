@@ -145,11 +145,6 @@ class ConfigManager():
                 m.update(info['symkey'])
                 m.update(test)
                 digest = m.hexdigest()
-                #print 'text'
-                #print text
-                #print 'test'
-                #print test
-                #print digest
                 if code == digest:
                     if flag == 'interest' and self.device[k]['loc_name'] == None:
                         self.device[k]['loc_name'] = test
@@ -277,7 +272,7 @@ class ConfigClosure(pyccn.Closure):
                 newuser = {'usrname':str(userkey_co.name), 'prefix':content['data_prefix']}
                 self.cm.usrlist.append(newuser)
                 self.cm.AddUser(newuser)
-                
+                #publish user's data point list
                 device_prefix = []
                 name_t = pyccn.Name(str(content['name'])).components
                 username = pyccn.Name(name_t[0:len(name_t)-1]).append('acl').appendVersion()
@@ -292,12 +287,14 @@ class ConfigClosure(pyccn.Closure):
                         
                         for device_name in self.cm.node:
                             index = self.cm.findbyprefix(device_name)
-                            print (device_name+'/data_points') in device_prefix
-                            if(index != -1 and ((device_name+'/data_points') in device_prefix == False)):
+                            flag = (device_name+'/data_points') in device_prefix
+                            if(index != -1 and flag == False):
                                 device_prefix.append(device_name+'/data_points')
                 data_prefix = pyccn.ContentObject(name = username, content = json.dumps({'prefix':device_prefix}), signed_info = pyccn.SignedInfo(self.cm.key.publicKeyID, pyccn.KeyLocator(self.cm.keyname)))
                 data_prefix.sign(self.cm.dsk)
                 self.cm.publisher.put(data_prefix)
+                print device_prefix
+                print 'Publish Data Points'
             #elif co.name.components[len(co.name.components)-1]=='acl':
                 #verify?
                    
